@@ -17,7 +17,7 @@ import tensorflow as tf
 
 # Parameters
 learning_rate = 0.001
-training_epochs = 15
+training_epochs = 5
 batch_size = 100
 display_step = 1
 
@@ -102,3 +102,6 @@ with tf.Session() as sess:
     # Calculate accuracy
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
     print("Accuracy:", accuracy.eval({x: mnist.test.images, y: mnist.test.labels}))
+    # show predictions
+    prediction = tf.argmax(pred, 1)
+    print(prediction.eval(feed_dict={x: mnist.test.images}))
