@@ -13,31 +13,40 @@ This tutorial requires your machine to have 2 GPUs
 "/gpu:1": The second GPU of your machine
 '''
 
-
-
 import numpy as np
 import tensorflow as tf
 import datetime
 
+from tensorflow.python.client import device_lib
+
+#========================
+# How many GPUs
+FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_integer('num_gpus', 1,
+                            """How many GPUs to use.""")
+
+# Get available GPUs
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+# print GPUs
+print(get_available_gpus())
+print(FLAGS.num_gpus)
+#========================
+
 # Processing Units logs
-log_device_placement = True
+log_device_placement = False
 
 # Num of multiplications to perform
-n = 10
+n = 3
 
 '''
 Example: compute A^n + B^n on 2 GPUs
-Results on 8 cores with 2 GTX-980:
- * Single GPU computation time: 0:00:11.277449
- * Multi GPU computation time: 0:00:07.131701
 '''
 # Create random large matrix
-A = np.random.rand(10000, 10000).astype('float32')
-B = np.random.rand(10000, 10000).astype('float32')
-
-# Create a graph to store results
-c1 = []
-c2 = []
+# size = 10000
+size = 1000
 
 def matpow(M, n):
     if n < 1: #Abstract cases where n < 1
@@ -45,50 +54,74 @@ def matpow(M, n):
     else:
         return tf.matmul(M, matpow(M, n-1))
 
-'''
-Single GPU computing
-'''
-with tf.device('/gpu:0'):
-    a = tf.placeholder(tf.float32, [10000, 10000])
-    b = tf.placeholder(tf.float32, [10000, 10000])
+def sumpow(n, size):
+    A = np.random.rand(size, size).astype('float32')
+    B = np.random.rand(size, size).astype('float32')
+
+    # Create a graph to store results
+    c1 = []
+    a = tf.placeholder(tf.float32, [size, size])
+    b = tf.placeholder(tf.float32, [size, size])
     # Compute A^n and B^n and store results in c1
     c1.append(matpow(a, n))
     c1.append(matpow(b, n))
+    sum = tf.add_n(c1)
+    return sum, a, b, A, B
 
-with tf.device('/cpu:0'):
-  sum = tf.add_n(c1) #Addition of all elements in c1, i.e. A^n + B^n
+#Single GPU computing
 
 t1_1 = datetime.datetime.now()
 with tf.Session(config=tf.ConfigProto(log_device_placement=log_device_placement)) as sess:
     # Run the op.
-    sess.run(sum, {a:A, b:B})
+    # sess.run(sum, {a:A, b:B})
+    with tf.device('/gpu:0'):
+        sum, a, b, A, B = sumpow(n, size)
+    sess.run(sum, {a: A, b: B})
+
 t2_1 = datetime.datetime.now()
+print("Single GPU computation time: " + str(t2_1-t1_1))
+
+
+#Single CPU computing
+
+t2_1 = datetime.datetime.now()
+with tf.Session(config=tf.ConfigProto(log_device_placement=log_device_placement)) as sess:
+    with tf.device('/cpu:0'):
+        sum1, a1, b1, A1, B1 = sumpow(n, size)
+    sess.run(sum1, {a1: A1, b1: B1})
+
+t3_1 = datetime.datetime.now()
+print("Single CPU computation time: " + str(t3_1-t2_1))
 
 
 '''
 Multi GPU computing
-'''
 # GPU:0 computes A^n
+'''
+'''
+A3 = np.random.rand(size, size).astype('float32')
+B3 = np.random.rand(size, size).astype('float32')
+c3 = []
+
 with tf.device('/gpu:0'):
     # Compute A^n and store result in c2
-    a = tf.placeholder(tf.float32, [10000, 10000])
-    c2.append(matpow(a, n))
+    a3 = tf.placeholder(tf.float32, [size, size])
+    c3.append(matpow(a3, n))
 
 # GPU:1 computes B^n
 with tf.device('/gpu:1'):
     # Compute B^n and store result in c2
-    b = tf.placeholder(tf.float32, [10000, 10000])
-    c2.append(matpow(b, n))
+    b3 = tf.placeholder(tf.float32, [size, size])
+    c3.append(matpow(b3, n))
 
 with tf.device('/cpu:0'):
-  sum = tf.add_n(c2) #Addition of all elements in c2, i.e. A^n + B^n
+    sum3 = tf.add_n(c3) #Addition of all elements in c2, i.e. A^n + B^n
 
 t1_2 = datetime.datetime.now()
 with tf.Session(config=tf.ConfigProto(log_device_placement=log_device_placement)) as sess:
     # Run the op.
-    sess.run(sum, {a:A, b:B})
+    sess.run(sum3, {a3:A3, b3:B3})
 t2_2 = datetime.datetime.now()
 
-
-print("Single GPU computation time: " + str(t2_1-t1_1))
 print("Multi GPU computation time: " + str(t2_2-t1_2))
+'''
