@@ -63,7 +63,7 @@ def sumpow(n, size):
     sum = tf.add_n(c1)
     return sum, a, b, A, B
 
-#Single GPU computing
+#Single GPU computing. Computations on GPU are much faster comparing to CPU on large matrices
 
 t1_1 = datetime.datetime.now()
 with tf.Session(config=tf.ConfigProto(log_device_placement=log_device_placement)) as sess:
