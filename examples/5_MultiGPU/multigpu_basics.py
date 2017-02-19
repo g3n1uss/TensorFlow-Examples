@@ -21,10 +21,6 @@ from tensorflow.python.client import device_lib
 
 #========================
 # How many GPUs
-FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_integer('num_gpus', 1,
-                            """How many GPUs to use.""")
-
 # Get available GPUs
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
@@ -32,7 +28,6 @@ def get_available_gpus():
 
 # print GPUs
 print(get_available_gpus())
-print(FLAGS.num_gpus)
 #========================
 
 # Processing Units logs
