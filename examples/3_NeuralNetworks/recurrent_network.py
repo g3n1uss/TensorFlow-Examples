@@ -10,7 +10,7 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 from __future__ import print_function
 
 import tensorflow as tf
-from tensorflow.python.ops import rnn, rnn_cell
+from tensorflow.contrib import rnn
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -53,18 +53,14 @@ def RNN(x, weights, biases):
     # Current data input shape: (batch_size, n_steps, n_input)
     # Required shape: 'n_steps' tensors list of shape (batch_size, n_input)
 
-    # Permuting batch_size and n_steps
-    x = tf.transpose(x, [1, 0, 2])
-    # Reshaping to (n_steps*batch_size, n_input)
-    x = tf.reshape(x, [-1, n_input])
-    # Split to get a list of 'n_steps' tensors of shape (batch_size, n_input)
-    x = tf.split(0, n_steps, x)
+    # Unstack to get a list of 'n_steps' tensors of shape (batch_size, n_input)
+    x = tf.unstack(x, n_steps, 1)
 
     # Define a lstm cell with tensorflow
-    lstm_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
+    lstm_cell = rnn.BasicLSTMCell(n_hidden, forget_bias=1.0)
 
     # Get lstm cell output
-    outputs, states = rnn.rnn(lstm_cell, x, dtype=tf.float32)
+    outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
 
     # Linear activation, using rnn inner loop last output
     return tf.matmul(outputs[-1], weights['out']) + biases['out']
@@ -72,7 +68,7 @@ def RNN(x, weights, biases):
 pred = RNN(x, weights, biases)
 
 # Define loss and optimizer
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, y))
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 # Evaluate model
